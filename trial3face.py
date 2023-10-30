@@ -2,7 +2,6 @@ import cv2
 import tkinter as tk
 import mediapipe as mp
 import math
-import os
 from PIL import Image, ImageTk
 
 class FacialPointsApp:
@@ -25,12 +24,15 @@ class FacialPointsApp:
         self.captured_image_label = tk.Label(root)
         self.captured_image_label.grid(row=0, column=1, padx=10, pady=10)
 
+        self.data_label = tk.Label(root, text="Facial Features:")
+        self.data_label.grid(row=1, column=0, columnspan=2, pady=10)
+
         self.btn_capture = tk.Button(root, text="Capture", command=self.capture_image)
-        self.btn_capture.grid(row=1, column=0, columnspan=2, pady=10)
+        self.btn_capture.grid(row=2, column=0, columnspan=2, pady=10)
 
         self.update()
 
-        self.save_path = r'D:\face map script\facepics\img1.jpg'  # Update this path to your desired location
+        self.save_path = r'D:\face map script\facepics\img2.jpg'  # Update this path to your desired location
 
     def capture_image(self):
         ret, frame = self.cap.read()
@@ -51,6 +53,10 @@ class FacialPointsApp:
             captured_image = ImageTk.PhotoImage(image=captured_image)
             self.captured_image_label.config(image=captured_image)
             self.captured_image_label.image = captured_image
+
+            # Estimate face data
+            face_data = self.estimate_face_data(landmarks)
+            self.display_face_data(face_data)
 
     def draw_landmarks(self, frame, landmarks):
         mp_drawing = mp.solutions.drawing_utils
@@ -95,6 +101,57 @@ class FacialPointsApp:
         if results.multi_face_landmarks:
             return results.multi_face_landmarks[0]
         return None
+
+    def estimate_face_data(self, landmarks):
+        face_data = {}
+
+        # Example: Calculate distances between specific landmarks
+        eye_distance = self.calculate_distance(landmarks, 70, 105)
+        face_data['Eye Distance'] = eye_distance
+
+        eyebrow_distance = self.calculate_distance(landmarks, 107, 152)
+        face_data['Eyebrow Distance'] = eyebrow_distance
+
+        jawline_sharpness = self.calculate_jawline_sharpness(landmarks)
+        face_data['Jawline Sharpness'] = jawline_sharpness
+
+        distance_between_eyes = self.calculate_distance(landmarks, 61, 291)
+        face_data['Distance Between Eyes'] = distance_between_eyes
+
+        length_of_face = self.calculate_distance(landmarks, 152, 10)
+        face_data['Length of Face'] = length_of_face
+
+        # Calculate the golden ratio of the face
+        hairline_to_chin = self.calculate_distance(landmarks, 10, 152)
+        golden_ratio_face = (hairline_to_chin / eye_distance) * 100
+        face_data['Golden Ratio of Face'] = golden_ratio_face
+
+        return face_data
+
+    def calculate_distance(self, landmarks, index1, index2):
+        x1, y1 = self.get_landmark_coordinates(landmarks, index1)
+        x2, y2 = self.get_landmark_coordinates(landmarks, index2)
+        distance = math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+        return distance
+
+    def calculate_jawline_sharpness(self, landmarks):
+        # Example: Calculate the angle between specific jawline landmarks (change as needed)
+        angle1 = self.calculate_angle(landmarks, 4, 152, 308)
+        angle2 = self.calculate_angle(landmarks, 8, 152, 308)
+        jawline_sharpness = (angle1 + angle2) / 2
+        return jawline_sharpness
+
+    def calculate_angle(self, landmarks, index1, index2, index3):
+        x1, y1 = self.get_landmark_coordinates(landmarks, index1)
+        x2, y2 = self.get_landmark_coordinates(landmarks, index2)
+        x3, y3 = self.get_landmark_coordinates(landmarks, index3)
+        angle_rad = math.atan2(y3 - y2, x3 - x2) - math.atan2(y1 - y2, x1 - x2)
+        angle_deg = math.degrees(angle_rad)
+        return angle_deg
+
+    def display_face_data(self, face_data):
+        data_text = "\n".join([f"{key}: {value}" for key, value in face_data.items()])
+        self.data_label.config(text=f"Facial Features:\n{data_text}")
 
     def run(self):
         self.root.mainloop()
